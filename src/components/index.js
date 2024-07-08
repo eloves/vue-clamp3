@@ -4,3 +4,4 @@ export default {
     app.component('v-clamp', Clamp)
   }
 }
+export const VClamp = Clamp
