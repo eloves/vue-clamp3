@@ -1,7 +1,7 @@
 {
   "name": "vue-clamp3",
   "author": "eloves",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "适配vue3.0版本的vue-clamp，多行折断及省略",
   "scripts": {
     "serve": "vue-cli-service serve",
