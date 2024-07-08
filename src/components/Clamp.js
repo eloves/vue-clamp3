@@ -1,5 +1,17 @@
 import { addListener, removeListener } from 'resize-detector'
-
+import { h } from 'vue'
+// 函数防抖
+function debounce(fun, delay) {
+  let timer = null
+  return function (args) {
+    let that = this
+    let _args = args
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(function () {
+      fun.call(that, _args)
+    }, delay)
+  }
+}
 export default {
   name: 'vue-clamp',
   props: {
@@ -20,13 +32,13 @@ export default {
     location: {
       type: String,
       default: 'end',
-      validator (value) {
+      validator(value) {
         return ['start', 'middle', 'end'].indexOf(value) !== -1
       }
     },
     expanded: Boolean
   },
-  data () {
+  data() {
     return {
       offset: null,
       text: this.getText(),
@@ -34,26 +46,30 @@ export default {
     }
   },
   computed: {
-    clampedText () {
+    clampedText() {
       if (this.location === 'start') {
         return this.ellipsis + (this.text.slice(-this.offset) || '').trim()
       } else if (this.location === 'middle') {
         const split = Math.floor(this.offset / 2)
-        return (this.text.slice(0, split) || '').trim() + this.ellipsis + (this.text.slice(-split) || '').trim()
+        return (
+          (this.text.slice(0, split) || '').trim() +
+          this.ellipsis +
+          (this.text.slice(-split) || '').trim()
+        )
       }
 
       return (this.text.slice(0, this.offset) || '').trim() + this.ellipsis
     },
-    isClamped () {
+    isClamped() {
       if (!this.text) {
         return false
       }
       return this.offset !== this.text.length
     },
-    realText () {
+    realText() {
       return this.isClamped ? this.clampedText : this.text
     },
-    realMaxHeight () {
+    realMaxHeight() {
       if (this.localExpanded) {
         return null
       }
@@ -65,10 +81,10 @@ export default {
     }
   },
   watch: {
-    expanded (val) {
+    expanded(val) {
       this.localExpanded = val
     },
-    localExpanded (val) {
+    localExpanded(val) {
       if (val) {
         this.clampAt(this.text.length)
       } else {
@@ -79,13 +95,13 @@ export default {
       }
     },
     isClamped: {
-      handler (val) {
+      handler(val) {
         this.$nextTick(() => this.$emit('clampchange', val))
       },
       immediate: true
     }
   },
-  mounted () {
+  mounted() {
     this.init()
 
     this.$watch(
@@ -94,16 +110,16 @@ export default {
     )
     this.$watch((vm) => [vm.tag, vm.text, vm.autoresize].join(), this.init)
   },
-  updated () {
+  updated() {
     this.text = this.getText()
     this.applyChange()
   },
-  beforeDestroy () {
+  beforeDestroy() {
     this.cleanUp()
   },
   methods: {
-    init () {
-      const contents = this.$slots.default
+    init() {
+      const contents = this.$slots.default()
       if (!contents) {
         return
       }
@@ -113,14 +129,14 @@ export default {
       this.cleanUp()
 
       if (this.autoresize) {
-        addListener(this.$el, this.update)
+        addListener(this.$el, debounce(this.update))
         this.unregisterResizeCallback = () => {
           removeListener(this.$el, this.update)
         }
       }
       this.update()
     },
-    update () {
+    update() {
       if (this.localExpanded) {
         return
       }
@@ -129,30 +145,29 @@ export default {
         this.search()
       }
     },
-    expand () {
+    expand() {
       this.localExpanded = true
     },
-    collapse () {
+    collapse() {
       this.localExpanded = false
     },
-    toggle () {
+    toggle() {
       this.localExpanded = !this.localExpanded
     },
-    getLines () {
+    getLines() {
       return Object.keys(
-        Array.prototype.slice.call(this.$refs.content.getClientRects()).reduce(
-          (prev, { top, bottom }) => {
+        Array.prototype.slice
+          .call(this.$refs.content.getClientRects())
+          .reduce((prev, { top, bottom }) => {
             const key = `${top}/${bottom}`
             if (!prev[key]) {
               prev[key] = true
             }
             return prev
-          },
-          {}
-        )
+          }, {})
       ).length
     },
-    isOverflow () {
+    isOverflow() {
       if (!this.maxLines && !this.maxHeight) {
         return false
       }
@@ -170,41 +185,36 @@ export default {
       }
       return false
     },
-    getText () {
+    getText() {
       // Look for the first non-empty text node
-      const [content] = (this.$slots.default || []).filter(
-        (node) => !node.tag && !node.isComment
-      )
-      return content ? content.text.trim() : ''
+      const [content] = (this.$slots.default() || []).filter((node) => !node.tag && !node.isComment)
+      return content ? content.children.trim() : ''
     },
-    moveEdge (steps) {
+    moveEdge(steps) {
       this.clampAt(this.offset + steps)
     },
-    clampAt (offset) {
+    clampAt(offset) {
       this.offset = offset
       this.applyChange()
     },
-    applyChange () {
+    applyChange() {
       this.$refs.text.textContent = this.realText
     },
-    stepToFit () {
+    stepToFit() {
       this.fill()
       this.clamp()
     },
-    fill () {
-      while (
-        (!this.isOverflow() || this.getLines() < 2) &&
-        this.offset < this.text.length
-      ) {
+    fill() {
+      while ((!this.isOverflow() || this.getLines() < 2) && this.offset < this.text.length) {
         this.moveEdge(1)
       }
     },
-    clamp () {
+    clamp() {
       while (this.isOverflow() && this.getLines() > 1 && this.offset > 0) {
         this.moveEdge(-1)
       }
     },
-    search (...range) {
+    search(...range) {
       const [from = 0, to = this.offset] = range
       if (to - from <= 3) {
         this.stepToFit()
@@ -218,24 +228,24 @@ export default {
         this.search(target, to)
       }
     },
-    cleanUp () {
+    cleanUp() {
       if (this.unregisterResizeCallback) {
         this.unregisterResizeCallback()
       }
     }
   },
-  render (h) {
+  render() {
     const contents = [
       h(
         'span',
         this.$isServer
           ? {}
           : {
-            ref: 'text',
-            attrs: {
-              'aria-label': this.text.trim()
-            }
-          },
+              ref: 'text',
+              attrs: {
+                'aria-label': this.text.trim()
+              }
+            },
         this.$isServer ? this.text : this.realText
       )
     ]
@@ -248,17 +258,13 @@ export default {
       clamped: this.isClamped,
       expanded: this.localExpanded
     }
-    const before = this.$scopedSlots.before
-      ? this.$scopedSlots.before(scope)
-      : this.$slots.before
+    const before = this.$slots.before
     if (before) {
-      contents.unshift(...(Array.isArray(before) ? before : [before]))
+      contents.unshift(this.$slots.before(scope))
     }
-    const after = this.$scopedSlots.after
-      ? this.$scopedSlots.after(scope)
-      : this.$slots.after
+    const after = this.$slots.after
     if (after) {
-      contents.push(...(Array.isArray(after) ? after : [after]))
+      contents.push(this.$slots.after(scope))
     }
     const lines = [
       h(
