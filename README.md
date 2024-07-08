@@ -30,7 +30,7 @@ app.use(VClamp)
     <VClamp>此情无计可消除，方下眉头，又上心头。</VClamp>
 </template>
 <script>
-    import VClamp from 'vue-clamp3'
+    import {VClamp} from 'vue-clamp3'
     export default {
         components: {
             VClamp
